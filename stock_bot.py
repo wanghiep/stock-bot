@@ -435,15 +435,25 @@ async def button_handler(
 
     # SCAN
 
-    if query.data == "scan":
+     if query.data == "scan":
 
         await query.message.reply_text(
             "⏳ Đang quét..."
         )
 
-        msg = build_message()
+        try:
 
-        await query.message.reply_text(msg)
+            msg = build_message()
+
+            save_history(msg)
+
+            await query.message.reply_text(msg)
+
+        except Exception as e:
+
+            await query.message.reply_text(
+                f"Lỗi scan: {e}"
+            )
 
     # HISTORY
     elif query.data == "history":
