@@ -1,7 +1,9 @@
 import yfinance as yf
+from flask import Flask
 import pandas as pd
 import threading
 import time
+import os
 
 from telegram import (
     Update,
