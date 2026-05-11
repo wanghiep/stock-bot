@@ -446,33 +446,28 @@ async def button_handler(
         await query.message.reply_text(msg)
 
     # HISTORY
+    elif query.data == "history":
 
-  elif query.data == "history":
+        try:
 
-    try:
+            with open(
+                "history.txt",
+                "r",
+                encoding="utf-8"
+            ) as f:
 
-        with open(
-            "history.txt",
-            "r",
-            encoding="utf-8"
-        ) as f:
+                data = f.read()
 
-            data = f.read()
+            if len(data) > 3500:
+                data = data[-3500:]
 
-        # Telegram giới hạn ký tự
+            await query.message.reply_text(data)
 
-        if len(data) > 3500:
-            data = data[-3500:]
+        except:
 
-        await query.message.reply_text(data)
-
-    except:
-
-        await query.message.reply_text(
-            "Chưa có lịch sử"
-        )
-
-
+            await query.message.reply_text(
+                "Chưa có lịch sử"
+            )
 # =========================
 # AUTO SEND 15H
 # =========================
