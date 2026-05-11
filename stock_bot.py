@@ -447,10 +447,29 @@ async def button_handler(
 
     # HISTORY
 
-    elif query.data == "history":
+  elif query.data == "history":
+
+    try:
+
+        with open(
+            "history.txt",
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            data = f.read()
+
+        # Telegram giới hạn ký tự
+
+        if len(data) > 3500:
+            data = data[-3500:]
+
+        await query.message.reply_text(data)
+
+    except:
 
         await query.message.reply_text(
-            "📜 Chức năng lịch sử sẽ nâng cấp sau"
+            "Chưa có lịch sử"
         )
 
 
@@ -470,7 +489,11 @@ def auto_send_loop(app):
 
             if now == "15:00":
 
-                msg = build_message()
+              msg = build_message()
+
+save_history(msg)
+
+await query.message.reply_text(msg)
 
                 asyncio.run(
 
