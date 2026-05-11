@@ -4,6 +4,7 @@ import pandas as pd
 import threading
 import time
 import os
+import asyncio
 
 from telegram import (
     Update,
@@ -21,19 +22,40 @@ from telegram.ext import (
 from datetime import datetime
 
 from config import BOT_TOKEN, CHAT_ID
+
+
+# =====================================
+# FLASK WEB SERVER
+# =====================================
+
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
     return "BOT RUNNING"
 
-# =========================
+
+def run_web():
+
+    port = int(
+        os.environ.get(
+            "PORT",
+            10000
+        )
+    )
+
+    app_web.run(
+        host='0.0.0.0',
+        port=port
+    )
+
+
+# =====================================
 # DANH SÁCH CỔ PHIẾU
-# =========================
+# =====================================
 
 SYMBOLS = [
 
-    # BANK
     "VCB.VN",
     "BID.VN",
     "CTG.VN",
@@ -41,16 +63,13 @@ SYMBOLS = [
     "MBB.VN",
     "SHB.VN",
 
-    # CHỨNG KHOÁN
     "SSI.VN",
     "VND.VN",
     "VIX.VN",
     "HCM.VN",
 
-    # THÉP
     "HPG.VN",
 
-    # KHÁC
     "FPT.VN",
     "MWG.VN",
     "GEX.VN",
@@ -58,19 +77,25 @@ SYMBOLS = [
 ]
 
 
-# =========================
+# =====================================
 # LẤY DATA
-# =========================
+# =====================================
 
 def get_stock_data(symbol):
 
     try:
 
         df = yf.download(
+
             symbol,
+
             period="2mo",
+
             interval="1d",
-            progress=False
+
+            progress=False,
+
+            threads=False
         )
 
         if df.empty:
@@ -85,9 +110,9 @@ def get_stock_data(symbol):
         return None
 
 
-# =========================
-# PHÁT HIỆN CÁ MẬP
-# =========================
+# =====================================
+# DETECT CÁ MẬP
+# =====================================
 
 def detect_whale(df):
 
@@ -96,20 +121,14 @@ def detect_whale(df):
         close = df['Close']
         volume = df['Volume']
 
-        # FIX MULTI INDEX
-
         if hasattr(close, "columns"):
             close = close.iloc[:, 0]
 
         if hasattr(volume, "columns"):
             volume = volume.iloc[:, 0]
 
-        # CHECK DATA
-
         if len(df) < 21:
             return None
-
-        # GIÁ
 
         price_today = float(
             close.iloc[-1]
@@ -124,8 +143,6 @@ def detect_whale(df):
             / price_yesterday
         ) * 100
 
-        # VOLUME
-
         vol_today = float(
             volume.iloc[-1]
         )
@@ -138,8 +155,6 @@ def detect_whale(df):
             return None
 
         ratio = vol_today / vol_ma20
-
-        # CÁ MẬP
 
         is_whale = (
             ratio >= 3
@@ -169,9 +184,36 @@ def detect_whale(df):
         return None
 
 
-# =========================
+# =====================================
+# SAVE HISTORY
+# =====================================
+
+def save_history(msg):
+
+    try:
+
+        with open(
+            "history.txt",
+            "a",
+            encoding="utf-8"
+        ) as f:
+
+            f.write(
+                "\n====================\n"
+            )
+
+            f.write(msg)
+
+            f.write("\n")
+
+    except Exception as e:
+
+        print(f"save_history error: {e}")
+
+
+# =====================================
 # BUILD MESSAGE
-# =========================
+# =====================================
 
 def build_message():
 
@@ -193,15 +235,11 @@ def build_message():
             close = df['Close']
             volume = df['Volume']
 
-            # FIX MULTI INDEX
-
             if hasattr(close, "columns"):
                 close = close.iloc[:, 0]
 
             if hasattr(volume, "columns"):
                 volume = volume.iloc[:, 0]
-
-            # GIÁ
 
             today = float(
                 close.iloc[-1]
@@ -216,8 +254,6 @@ def build_message():
                 / yesterday
             ) * 100
 
-            # VOLUME
-
             vol_today = float(
                 volume.iloc[-1]
             )
@@ -229,8 +265,6 @@ def build_message():
             ratio = (
                 vol_today / vol_ma20
             ) if vol_ma20 > 0 else 0
-
-            # TOP GAIN
 
             result_gain.append({
 
@@ -244,8 +278,6 @@ def build_message():
                     2
                 )
             })
-
-            # THANH KHOẢN MẠNH
 
             if ratio >= 2:
 
@@ -261,8 +293,6 @@ def build_message():
                         2
                     )
                 })
-
-            # CÁ MẬP
 
             dm = detect_whale(df)
 
@@ -290,10 +320,6 @@ def build_message():
 
             continue
 
-    # =====================
-    # SORT
-    # =====================
-
     result_gain = sorted(
         result_gain,
         key=lambda x: x["change"],
@@ -312,16 +338,10 @@ def build_message():
         reverse=True
     )[:5]
 
-    # =====================
-    # MESSAGE
-    # =====================
-
     msg = (
         f"📊 STOCK BOT\n"
         f"{datetime.now().strftime('%d/%m %H:%M')}\n\n"
     )
-
-    # TOP GAIN
 
     msg += "🚀 TOP TĂNG GIÁ\n"
 
@@ -335,8 +355,6 @@ def build_message():
             f"{x['ticker']} "
             f"| +{x['change']}%\n"
         )
-
-    # VOLUME
 
     msg += "\n🔥 THANH KHOẢN TĂNG MẠNH\n"
 
@@ -356,8 +374,6 @@ def build_message():
     else:
 
         msg += "Không có dữ liệu\n"
-
-    # WHALE
 
     msg += "\n🐋 DÒNG TIỀN CÁ MẬP (20 PHIÊN)\n"
 
@@ -382,9 +398,9 @@ def build_message():
     return msg
 
 
-# =========================
-# START
-# =========================
+# =====================================
+# START BOT
+# =====================================
 
 async def start(
     update: Update,
@@ -420,9 +436,9 @@ async def start(
     )
 
 
-# =========================
-# BUTTON
-# =========================
+# =====================================
+# BUTTON HANDLER
+# =====================================
 
 async def button_handler(
     update: Update,
@@ -479,9 +495,11 @@ async def button_handler(
             await query.message.reply_text(
                 "Chưa có lịch sử"
             )
-# =========================
+
+
+# =====================================
 # AUTO SEND 15H
-# =========================
+# =====================================
 
 def auto_send_loop(app):
 
@@ -490,8 +508,6 @@ def auto_send_loop(app):
         try:
 
             now = time.strftime("%H:%M")
-
-            # AUTO 15H
 
             if now == "15:00":
 
@@ -524,23 +540,32 @@ def auto_send_loop(app):
             )
 
             time.sleep(30)
+
+
+# =====================================
+# MAIN
+# =====================================
+
 def main():
-    
-   web_thread = threading.Thread(
+
+    # START WEB SERVER
+
+    web_thread = threading.Thread(
+
         target=run_web,
+
         daemon=True
     )
 
     web_thread.start()
 
-    app = Application.builder().token(
-        BOT_TOKEN
-    ).build()
+    # TELEGRAM BOT
+
     app = Application.builder().token(
         BOT_TOKEN
     ).build()
 
-    # HANDLER
+    # HANDLERS
 
     app.add_handler(
         CommandHandler(
@@ -557,23 +582,36 @@ def main():
 
     # AUTO THREAD
 
-    thread = threading.Thread(
+    auto_thread = threading.Thread(
+
         target=auto_send_loop,
+
         args=(app,),
+
         daemon=True
     )
 
-    thread.start()
+    auto_thread.start()
 
     print("BOT RUNNING...")
 
     app.run_polling()
 
 
-# =========================
+# =====================================
 # RUN
-# =========================
+# =====================================
 
-if __name__ == "__main__":
+while True:
 
-    main()
+    try:
+
+        main()
+
+    except Exception as e:
+
+        print(
+            f"MAIN ERROR: {e}"
+        )
+
+        time.sleep(30)
