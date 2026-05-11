@@ -435,7 +435,7 @@ async def button_handler(
 
     # SCAN
 
-     if query.data == "scan":
+    if query.data == "scan":
 
         await query.message.reply_text(
             "⏳ Đang quét..."
@@ -456,6 +456,7 @@ async def button_handler(
             )
 
     # HISTORY
+
     elif query.data == "history":
 
         try:
