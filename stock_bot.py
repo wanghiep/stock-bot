@@ -491,20 +491,20 @@ def auto_send_loop(app):
 
             now = time.strftime("%H:%M")
 
-            # GỬI 15:00
+            # AUTO 15H
 
             if now == "15:00":
 
-              msg = build_message()
+                msg = build_message()
 
-save_history(msg)
-
-await query.message.reply_text(msg)
+                save_history(msg)
 
                 asyncio.run(
 
                     app.bot.send_message(
+
                         chat_id=CHAT_ID,
+
                         text=msg
                     )
                 )
@@ -512,8 +512,6 @@ await query.message.reply_text(msg)
                 print(
                     "Đã gửi auto 15h"
                 )
-
-                # TRÁNH GỬI LẶP
 
                 time.sleep(60)
 
@@ -526,24 +524,6 @@ await query.message.reply_text(msg)
             )
 
             time.sleep(30)
-
-
-# =========================
-# MAIN
-# =========================
-def run_web():
-
-    port = int(
-        os.environ.get(
-            "PORT",
-            10000
-        )
-    )
-
-    app_web.run(
-        host='0.0.0.0',
-        port=port
-    )
 def main():
     
    web_thread = threading.Thread(
