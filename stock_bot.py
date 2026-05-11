@@ -21,7 +21,11 @@ from telegram.ext import (
 from datetime import datetime
 
 from config import BOT_TOKEN, CHAT_ID
+app_web = Flask(__name__)
 
+@app_web.route('/')
+def home():
+    return "BOT RUNNING"
 
 # =========================
 # DANH SÁCH CỔ PHIẾU
@@ -498,9 +502,31 @@ def auto_send_loop(app):
 # =========================
 # MAIN
 # =========================
+def run_web():
 
+    port = int(
+        os.environ.get(
+            "PORT",
+            10000
+        )
+    )
+
+    app_web.run(
+        host='0.0.0.0',
+        port=port
+    )
 def main():
+    
+   web_thread = threading.Thread(
+        target=run_web,
+        daemon=True
+    )
 
+    web_thread.start()
+
+    app = Application.builder().token(
+        BOT_TOKEN
+    ).build()
     app = Application.builder().token(
         BOT_TOKEN
     ).build()
