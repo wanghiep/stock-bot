@@ -602,16 +602,6 @@ def main():
 # RUN
 # =====================================
 
-while True:
+if __name__ == "__main__":
 
-    try:
-
-        main()
-
-    except Exception as e:
-
-        print(
-            f"MAIN ERROR: {e}"
-        )
-
-        time.sleep(30)
+    main()
