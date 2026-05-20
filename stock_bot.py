@@ -1,6 +1,5 @@
 import yfinance as yf
 from flask import Flask
-import pandas as pd
 import threading
 import time
 import os
@@ -54,13 +53,9 @@ def run_web():
 # DANH SÁCH CỔ PHIẾU
 # =====================================
 
-
 SYMBOLS = [
 
-    # =========================
     # BANK
-    # =========================
-
     "VCB.VN",
     "BID.VN",
     "CTG.VN",
@@ -69,103 +64,69 @@ SYMBOLS = [
     "STB.VN",
     "SHB.VN",
 
-    # =========================
     # CHỨNG KHOÁN
-    # =========================
-
     "SSI.VN",
     "VND.VN",
     "VIX.VN",
     "HCM.VN",
     "FTS.VN",
 
-    # =========================
-    # BẤT ĐỘNG SẢN
-    # =========================
-
+    # BĐS
     "DIG.VN",
     "DXG.VN",
     "NVL.VN",
     "PDR.VN",
     "KDH.VN",
 
-    # =========================
     # THÉP
-    # =========================
-
     "HPG.VN",
     "HSG.VN",
     "NKG.VN",
 
-    # =========================
     # CÔNG NGHỆ
-    # =========================
-
     "FPT.VN",
     "CMG.VN",
     "ELC.VN",
 
-    # =========================
     # BÁN LẺ
-    # =========================
-
     "MWG.VN",
     "FRT.VN",
     "DGW.VN",
 
-    # =========================
     # ĐIỆN
-    # =========================
-
     "REE.VN",
     "POW.VN",
     "GEG.VN",
 
-    # =========================
     # DẦU KHÍ
-    # =========================
-
     "GAS.VN",
     "PVD.VN",
     "BSR.VN",
 
-    # =========================
-    # PHÂN BÓN / HÓA CHẤT
-    # =========================
-
+    # PHÂN BÓN
     "DGC.VN",
     "DCM.VN",
     "DPM.VN",
 
-    # =========================
     # XÂY DỰNG
-    # =========================
-
     "CTD.VN",
     "HHV.VN",
     "VCG.VN",
 
-    # =========================
-    # LOGISTICS / CẢNG
-    # =========================
-
+    # LOGISTICS
     "GMD.VN",
     "HAH.VN",
     "VSC.VN",
 
-    # =========================
     # KHÁC
-    # =========================
-
     "PNJ.VN",
     "DBC.VN",
     "GEX.VN"
 ]
 
 
-
 # =====================================
-# LẤY DATA
+# GET DATA
 # =====================================
 
 def get_stock_data(symbol):
@@ -198,7 +159,7 @@ def get_stock_data(symbol):
 
 
 # =====================================
-# DETECT CÁ MẬP
+# DETECT WHALE
 # =====================================
 
 def detect_whale(df):
@@ -383,21 +344,19 @@ def build_message():
 
             dm = detect_whale(df)
 
-            if dm:
+            if dm and dm["whale"]:
 
-                if dm["whale"]:
+                result_whale.append({
 
-                    result_whale.append({
+                    "ticker": symbol.replace(
+                        ".VN",
+                        ""
+                    ),
 
-                        "ticker": symbol.replace(
-                            ".VN",
-                            ""
-                        ),
+                    "change": dm["change"],
 
-                        "change": dm["change"],
-
-                        "ratio": dm["ratio"]
-                    })
+                    "ratio": dm["ratio"]
+                })
 
         except Exception as e:
 
@@ -462,7 +421,7 @@ def build_message():
 
         msg += "Không có dữ liệu\n"
 
-    msg += "\n🐋 DÒNG TIỀN CÁ MẬP (20 PHIÊN)\n"
+    msg += "\n🐋 DÒNG TIỀN CÁ MẬP\n"
 
     if result_whale:
 
@@ -486,7 +445,7 @@ def build_message():
 
 
 # =====================================
-# START BOT
+# START
 # =====================================
 
 async def start(
@@ -585,7 +544,7 @@ async def button_handler(
 
 
 # =====================================
-# AUTO SEND 15H
+# AUTO SEND
 # =====================================
 
 def auto_send_loop(app):
@@ -635,7 +594,7 @@ def auto_send_loop(app):
 
 def main():
 
-    # START WEB SERVER
+    # WEB SERVER
 
     web_thread = threading.Thread(
 
@@ -646,7 +605,7 @@ def main():
 
     web_thread.start()
 
-    # TELEGRAM BOT
+    # TELEGRAM
 
     app = Application.builder().token(
         BOT_TOKEN
@@ -684,9 +643,11 @@ def main():
 
     app.run_polling(
 
-    drop_pending_updates=True
+        drop_pending_updates=True,
 
-)
+        close_loop=False
+
+    )
 
 
 # =====================================
