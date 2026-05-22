@@ -640,14 +640,20 @@ def main():
     auto_thread.start()
 
     print("BOT RUNNING...")
-
+    
     app.run_polling(
 
         drop_pending_updates=True,
 
-        close_loop=False
+        allowed_updates=Update.ALL_TYPES,
 
-    )
+        close_loop=False,
+
+        stop_signals=None
+
+)
+
+    
 
 
 # =====================================
