@@ -273,12 +273,30 @@ def build_message():
 
     for symbol in SYMBOLS:
 
-        df = get_stock_data(symbol)
-
-        if df is None:
-            continue
-
         try:
+
+            # =========================
+            # CHỐNG RATE LIMIT
+            # =========================
+
+            time.sleep(1)
+
+            df = yf.download(
+
+                symbol,
+
+                period="2mo",
+
+                interval="1d",
+
+                progress=False,
+
+                threads=False
+
+            )
+
+            if df.empty:
+                continue
 
             close = df['Close']
             volume = df['Volume']
@@ -288,6 +306,13 @@ def build_message():
 
             if hasattr(volume, "columns"):
                 volume = volume.iloc[:, 0]
+
+            if len(close) < 21:
+                continue
+
+            # =========================
+            # PRICE CHANGE
+            # =========================
 
             today = float(
                 close.iloc[-1]
@@ -302,6 +327,10 @@ def build_message():
                 / yesterday
             ) * 100
 
+            # =========================
+            # VOLUME
+            # =========================
+
             vol_today = float(
                 volume.iloc[-1]
             )
@@ -313,6 +342,10 @@ def build_message():
             ratio = (
                 vol_today / vol_ma20
             ) if vol_ma20 > 0 else 0
+
+            # =========================
+            # TOP GAIN
+            # =========================
 
             result_gain.append({
 
@@ -326,6 +359,10 @@ def build_message():
                     2
                 )
             })
+
+            # =========================
+            # VOLUME BREAKOUT
+            # =========================
 
             if ratio >= 2:
 
@@ -342,9 +379,21 @@ def build_message():
                     )
                 })
 
-            dm = detect_whale(df)
+            # =========================
+            # WHALE DETECT
+            # =========================
 
-            if dm and dm["whale"]:
+            is_whale = (
+
+                ratio >= 3
+
+                and
+
+                change >= 1.5
+
+            )
+
+            if is_whale:
 
                 result_whale.append({
 
@@ -353,88 +402,157 @@ def build_message():
                         ""
                     ),
 
-                    "change": dm["change"],
+                    "change": round(
+                        change,
+                        2
+                    ),
 
-                    "ratio": dm["ratio"]
+                    "ratio": round(
+                        ratio,
+                        2
+                    )
                 })
 
         except Exception as e:
 
             print(
-                f"build_message error {symbol}: {e}"
+                f"Lỗi {symbol}: {e}"
             )
 
             continue
 
+    # =========================
+    # SORT
+    # =========================
+
     result_gain = sorted(
+
         result_gain,
+
         key=lambda x: x["change"],
+
         reverse=True
+
     )[:5]
 
     result_volume = sorted(
+
         result_volume,
+
         key=lambda x: x["ratio"],
+
         reverse=True
+
     )[:5]
 
     result_whale = sorted(
+
         result_whale,
+
         key=lambda x: x["ratio"],
+
         reverse=True
+
     )[:5]
 
+    # =========================
+    # BUILD MESSAGE
+    # =========================
+
     msg = (
+
         f"📊 STOCK BOT\n"
+
         f"{datetime.now().strftime('%d/%m %H:%M')}\n\n"
+
     )
+
+    # =========================
+    # TOP GAIN
+    # =========================
 
     msg += "🚀 TOP TĂNG GIÁ\n"
 
-    for i, x in enumerate(
-        result_gain,
-        1
-    ):
-
-        msg += (
-            f"{i}. "
-            f"{x['ticker']} "
-            f"| +{x['change']}%\n"
-        )
-
-    msg += "\n🔥 THANH KHOẢN TĂNG MẠNH\n"
-
-    if result_volume:
+    if result_gain:
 
         for i, x in enumerate(
-            result_volume,
+
+            result_gain,
+
             1
+
         ):
 
             msg += (
+
                 f"{i}. "
+
                 f"{x['ticker']} "
-                f"| x{x['ratio']}\n"
+
+                f"| +{x['change']}%\n"
+
             )
 
     else:
 
         msg += "Không có dữ liệu\n"
 
+    # =========================
+    # VOLUME
+    # =========================
+
+    msg += "\n🔥 THANH KHOẢN TĂNG MẠNH\n"
+
+    if result_volume:
+
+        for i, x in enumerate(
+
+            result_volume,
+
+            1
+
+        ):
+
+            msg += (
+
+                f"{i}. "
+
+                f"{x['ticker']} "
+
+                f"| x{x['ratio']}\n"
+
+            )
+
+    else:
+
+        msg += "Không có dữ liệu\n"
+
+    # =========================
+    # WHALE
+    # =========================
+
     msg += "\n🐋 DÒNG TIỀN CÁ MẬP\n"
 
     if result_whale:
 
         for i, x in enumerate(
+
             result_whale,
+
             1
+
         ):
 
             msg += (
+
                 f"{i}. "
+
                 f"{x['ticker']} "
+
                 f"| +{x['change']}% "
+
                 f"| x{x['ratio']}\n"
+
             )
 
     else:
@@ -442,6 +560,7 @@ def build_message():
         msg += "Không phát hiện cá mập\n"
 
     return msg
+
 
 
 # =====================================
